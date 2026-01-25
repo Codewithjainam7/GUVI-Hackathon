@@ -82,3 +82,13 @@ class StartConversationRequest(BaseModel):
         default=None,
         description="Additional metadata"
     )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "initial_message": "Hello, I am calling from the Income Tax Department. Your PAN card has been linked to suspicious activities.",
+                "scammer_identifier": "+91-9876543210",
+                "platform": "phone_call",
+                "metadata": {"call_time": "2026-01-26T10:30:00Z"}
+            }
+        }

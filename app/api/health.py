@@ -49,3 +49,42 @@ async def readiness_check() -> JSONResponse:
             "checks": checks
         }
     )
+
+
+@router.get("/metrics")
+async def get_system_metrics() -> JSONResponse:
+    """
+    Get system metrics for monitoring
+    
+    Returns latency stats, model usage, detection rates, and errors
+    """
+    from app.utils.metrics import get_metrics
+    
+    metrics = get_metrics()
+    return JSONResponse(
+        status_code=200,
+        content={
+            "success": True,
+            "data": metrics.get_all_metrics(),
+            "error": None
+        }
+    )
+
+
+@router.get("/network")
+async def get_network_stats() -> JSONResponse:
+    """
+    Get scammer network analysis statistics
+    """
+    from app.scoring.network_analyzer import get_network_analyzer
+    
+    analyzer = get_network_analyzer()
+    return JSONResponse(
+        status_code=200,
+        content={
+            "success": True,
+            "data": analyzer.get_network_stats(),
+            "error": None
+        }
+    )
+

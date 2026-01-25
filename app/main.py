@@ -16,6 +16,8 @@ from app.api.routes import router as api_router
 from app.api.health import router as health_router
 from app.api.mock_scammer import router as mock_router
 from app.utils.logging import setup_logging
+from app.utils.rate_limiter import RateLimitMiddleware, get_rate_limiter
+from app.utils.metrics import get_metrics
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -33,11 +35,32 @@ async def lifespan(app: FastAPI):
         debug=settings.debug
     )
     
-    # Initialize connections (database, redis, LLM clients)
-    # TODO: Add database connection pool
-    # TODO: Add Redis connection
-    # TODO: Initialize Gemini client
-    # TODO: Initialize Local LLaMA client
+    # Initialize metrics
+    metrics = get_metrics()
+    metrics.increment("app.startup")
+    
+    # Initialize memory manager
+    from app.memory.memory_manager import get_memory_manager
+    try:
+        memory = await get_memory_manager()
+        logger.info("Memory manager initialized")
+    except Exception as e:
+        logger.warning("Memory manager init failed (using fallback)", error=str(e))
+    
+    # Initialize LLM clients
+    from app.llm.gemini_client import get_gemini_client
+    gemini = get_gemini_client()
+    if await gemini.health_check():
+        logger.info("Gemini client healthy")
+    else:
+        logger.warning("Gemini client not available")
+    
+    from app.llm.local_llama_client import get_local_llama_client
+    llama = get_local_llama_client()
+    if await llama.health_check():
+        logger.info("Local LLaMA client healthy")
+    else:
+        logger.warning("Local LLaMA client not available")
     
     logger.info("Application startup complete")
     
@@ -45,8 +68,14 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down Agentic Honeypot")
-    # TODO: Close database connections
-    # TODO: Close Redis connection
+    
+    # Close memory connections
+    try:
+        memory = await get_memory_manager()
+        await memory.disconnect()
+    except Exception:
+        pass
+    
     logger.info("Application shutdown complete")
 
 
@@ -61,6 +90,10 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.debug else None,
         lifespan=lifespan
     )
+    
+    # Rate Limiting Middleware
+    rate_limiter = get_rate_limiter()
+    app.add_middleware(RateLimitMiddleware, rate_limiter=rate_limiter)
     
     # CORS Middleware
     app.add_middleware(

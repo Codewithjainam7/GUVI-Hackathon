@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.api.routes import router as api_router
 from app.api.health import router as health_router
+from app.api.mock_scammer import router as mock_router
 from app.utils.logging import setup_logging
 
 settings = get_settings()
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health_router, tags=["Health"])
     app.include_router(api_router, prefix=settings.api_prefix, tags=["API"])
+    app.include_router(mock_router, prefix="/demo", tags=["Demo"])
     
     return app
 

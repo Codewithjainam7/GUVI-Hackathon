@@ -13,17 +13,9 @@ services:
         value: 3.11.0
       - key: GEMINI_API_KEY
         sync: false
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: honeypot-redis
-          property: connectionString
+
 
 databases:
   - name: honeypot-db
     databaseName: honeypot
     user: honeypot
-
-redis:
-  - name: honeypot-redis
-    ipAllowList: [] # only allow internal connections

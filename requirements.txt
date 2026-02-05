@@ -25,6 +25,8 @@ aiohttp==3.9.1
 # LLM SDKs
 google-generativeai==0.3.2
 openai==1.10.0  # For local LLaMA via OpenAI-compatible API
+groq==0.4.2     # For fast inference
+aiosqlite==0.20.0 # For local SQLite fallback
 
 # Security
 python-jose[cryptography]==3.3.0

@@ -38,6 +38,10 @@ class DatabaseManager:
         
         url = database_url or settings.database_url
         
+        # Render provides 'postgres://' but SQLAlchemy requires 'postgresql://'
+        if url and url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        
         # Create async engine with connection pooling
         self.engine = create_async_engine(
             url,

@@ -246,7 +246,7 @@ class EnsembleRiskEngine:
             
             # Calculate confidence based on agreement
             score_diff = abs(rule_score - llm_score)
-            confidence = 1.0 - (score_diff * 0.5)  # Lower confidence if scores disagree
+            confidence = max(0.0, 1.0 - (score_diff * 0.5))  # Clamp to 0, lower confidence if scores disagree
             
             result.risk_score = min(raw_score + agreement_bonus, 1.0)
             result.confidence = confidence

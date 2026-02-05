@@ -104,7 +104,7 @@ ROUTING_CONFIG = {
 ### Prerequisites
 
 - Python 3.11+
-- Docker & Docker Compose
+- Python 3.11+
 - Gemini API Key
 - Ollama (for local LLaMA)
 
@@ -136,11 +136,7 @@ ollama serve
 uvicorn app.main:app --reload
 ```
 
-### Docker Deployment
 
-```bash
-docker-compose up -d
-```
 
 ---
 
@@ -163,8 +159,8 @@ honeypot/
 │   ├── utils/            # Helper functions
 │   └── main.py           # Application entry point
 ├── tests/                # Test suite
-├── docker-compose.yml    # Container orchestration
-├── Dockerfile            # Application container
+├── tests/                # Test suite
+├── render.yaml           # Cloud deployment config
 ├── requirements.txt      # Python dependencies
 └── README.md             # This file
 ```
@@ -268,3 +264,25 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ---
 
 **Built with ❤️ to make the internet safer**
+
+---
+
+## ☁️ Deployment Guide
+
+### Backend (Render) 🚀
+1. **Fork** this repo to GitHub.
+2. Sign up on [Render.com](https://render.com).
+3. Create a **New Blueprint** and connect your repo.
+4. Render will auto-detect `render.yaml` and provision:
+   - Python Web Service
+   - PostgreSQL Database
+   - Redis Instance
+5. **Important**: Add your `GEMINI_API_KEY` in the Render Dashboard under **Environment**.
+
+### Frontend (Vercel) ⚡
+1. Sign up on [Vercel.com](https://vercel.com).
+2. **Import Project** -> Select your repo -> Select `web-ui` as the **Root Directory**.
+3. **Environment Variables**:
+   - Add `BACKEND_URL`: The URL of your deployed Render service (e.g., `https://honeypot-agent.onrender.com`).
+4. Click **Deploy**.
+

@@ -17,6 +17,8 @@ from app.agents.state_machine import (
 from app.personas.persona_engine import PersonaEngine, PersonaType, get_persona_engine
 from app.scoring.ensemble_engine import EnsembleRiskEngine, EnsembleResult, get_ensemble_engine
 from app.extractors.regex_extractor import RegexExtractor, get_regex_extractor
+from app.utils.database import get_database
+from app.schemas.database_models import Conversation, Message as DBMessage, ExtractedIntelligence
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -102,6 +104,7 @@ class HoneypotOrchestrator:
             conversation_id=conversation_id,
             scammer_identifier=scammer_identifier
         )
+        await self._persist_conversation(conv_context)
         
         # Analyze the initial message
         analysis = await self.risk_engine.analyze(initial_message, context)
@@ -113,6 +116,10 @@ class HoneypotOrchestrator:
         self.state_machine.add_message(
             conversation_id, 'scammer', initial_message,
             {'analysis': analysis.to_dict()}
+        )
+        await self._persist_new_message(
+            conversation_id, 'scammer', initial_message, 
+            conv_context.turn_count, {'analysis': analysis.to_dict()}
         )
         
         # Select persona based on scam type
@@ -150,6 +157,11 @@ class HoneypotOrchestrator:
             conversation_id, 'honeypot', response,
             {'persona': persona.persona_type.value}
         )
+        await self._persist_new_message(
+            conversation_id, 'honeypot', response,
+            conv_context.turn_count, {'persona': persona.persona_type.value}
+        )
+        await self._persist_conversation(conv_context)
         
         processing_time = int((time.time() - start_time) * 1000)
         
@@ -207,6 +219,7 @@ class HoneypotOrchestrator:
         
         # Add scammer message
         self.state_machine.add_message(conversation_id, 'scammer', scammer_message)
+        await self._persist_new_message(conversation_id, 'scammer', scammer_message, conv_context.turn_count)
         
         # Safety check
         safety_warnings = await self._check_safety(scammer_message, conv_context)
@@ -286,6 +299,11 @@ class HoneypotOrchestrator:
             conversation_id, 'honeypot', response,
             {'persona': persona.persona_type.value}
         )
+        await self._persist_new_message(
+            conversation_id, 'honeypot', response,
+            conv_context.turn_count, {'persona': persona.persona_type.value}
+        )
+        await self._persist_conversation(conv_context)
         
         processing_time = int((time.time() - start_time) * 1000)
         
@@ -382,6 +400,42 @@ class HoneypotOrchestrator:
     def get_conversation_summary(self, conversation_id: str) -> Dict[str, Any]:
         """Get a summary of a conversation"""
         return self.state_machine.get_state_summary(conversation_id)
+
+    async def _persist_conversation(self, context: ConversationContext):
+        """Persist conversation state to DB"""
+        try:
+            db = await get_database()
+            async with db.session() as session:
+                conv = Conversation(
+                    id=context.conversation_id,
+                    state=context.state.value if hasattr(context.state, 'value') else context.state,
+                    turn_count=context.turn_count,
+                    scam_score=context.scam_score,
+                    persona_type=context.persona_type,
+                    started_at=context.started_at,
+                    last_activity=context.last_activity,
+                    is_terminated=context.is_terminated,
+                    termination_reason=context.termination_reason
+                )
+                await session.merge(conv)
+        except Exception as e:
+            logger.error("Failed to persist conversation", error=str(e))
+
+    async def _persist_new_message(self, conversation_id: str, role: str, content: str, turn: int, metadata: Dict = None):
+        """Persist new message to DB"""
+        try:
+            db = await get_database()
+            async with db.session() as session:
+                msg = DBMessage(
+                    conversation_id=conversation_id,
+                    role=role,
+                    content=content,
+                    turn_number=turn,
+                    extra_data=metadata or {}
+                )
+                session.add(msg)
+        except Exception as e:
+            logger.error("Failed to persist message", error=str(e))
 
 
 # Singleton instance

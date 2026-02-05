@@ -39,6 +39,14 @@ async def lifespan(app: FastAPI):
     metrics = get_metrics()
     metrics.increment("app.startup")
     
+    # Initialize database
+    from app.utils.database import init_database
+    try:
+        await init_database()
+        logger.info("Database initialized")
+    except Exception as e:
+        logger.error("Database initialization failed", error=str(e))
+    
     # Initialize memory manager
     from app.memory.memory_manager import get_memory_manager
     try:
@@ -98,7 +106,7 @@ def create_app() -> FastAPI:
     # CORS Middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.debug else [],
+        allow_origins=["http://localhost:3000", "http://localhost:3001"] + (["*"] if settings.debug else []),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -129,6 +137,10 @@ def create_app() -> FastAPI:
     app.include_router(health_router, tags=["Health"])
     app.include_router(api_router, prefix=settings.api_prefix, tags=["API"])
     app.include_router(mock_router, prefix="/demo", tags=["Demo"])
+    
+    # Analytics Router
+    from app.api.analytics import router as analytics_router
+    app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics"])
     
     return app
 

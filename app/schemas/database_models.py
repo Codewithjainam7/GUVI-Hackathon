@@ -59,6 +59,7 @@ class Conversation(Base):
         Index("ix_conversations_scammer_id", "scammer_id"),
         Index("ix_conversations_state", "state"),
         Index("ix_conversations_started_at", "started_at"),
+        Index("ix_conversations_scam_score", "scam_score"),
     )
 
 
@@ -76,7 +77,7 @@ class Message(Base):
     
     # Metadata
     timestamp = Column(DateTime, default=datetime.utcnow)
-    metadata = Column(JSON, nullable=True)
+    extra_data = Column(JSON, nullable=True)
     
     # Analysis
     scam_score = Column(Float, nullable=True)

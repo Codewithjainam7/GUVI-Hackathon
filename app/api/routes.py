@@ -4,6 +4,7 @@ All business logic is delegated to orchestrator/agents
 """
 
 from typing import Any
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import APIKeyHeader
@@ -13,6 +14,9 @@ from app.schemas.requests import AnalyzeMessageRequest, ContinueConversationRequ
 from app.schemas.responses import UnifiedResponse, AnalysisResult, ConversationResult
 from app.orchestrator.honeypot_orchestrator import get_orchestrator
 from app.safety.guardrails import get_safety_guardrails
+from sqlalchemy import select, func
+from app.schemas.database_models import Conversation, ExtractedIntelligence, Message
+from app.utils.database import get_database
 
 router = APIRouter()
 settings = get_settings()
@@ -287,3 +291,64 @@ async def get_safety_status(
         data=guardrails.get_safety_status(),
         error=None
     )
+
+
+@router.get("/stats")
+async def get_stats(
+    api_key: str = Depends(verify_api_key)
+) -> UnifiedResponse[dict]:
+    """
+    Get system statistics for dashboard
+    """
+    db = await get_database()
+    
+    async with db.session() as session:
+        # Active Engagements
+        active_query = select(func.count(Conversation.id)).where(Conversation.is_terminated == False)
+        active_count = (await session.execute(active_query)).scalar() or 0
+        
+        # Total Scams (Total conversations)
+        total_query = select(func.count(Conversation.id))
+        total_count = (await session.execute(total_query)).scalar() or 0
+        
+        # Extracted Intel
+        intel_query = select(func.count(ExtractedIntelligence.id))
+        intel_count = (await session.execute(intel_query)).scalar() or 0
+        
+        # Traffic Series (Last 12 hours)
+        last_12h = datetime.utcnow() - timedelta(hours=12)
+        traffic_series = []
+        
+        # We'll fetch hourly counts
+        # Note: Using Python-side grouping for database compatibility (avoiding dialect specific date_trunc functions)
+        traffic_query = select(Message.timestamp).where(Message.timestamp >= last_12h)
+        timestamps = (await session.execute(traffic_query)).scalars().all()
+        
+        # Initialize hourly buckets
+        now = datetime.utcnow()
+        buckets = {}
+        for i in range(12):
+            hour_key = (now - timedelta(hours=i)).strftime("%H:00")
+            buckets[hour_key] = 0
+            
+        # Fill buckets
+        for ts in timestamps:
+            hour_key = ts.strftime("%H:00")
+            if hour_key in buckets:
+                buckets[hour_key] += 1
+                
+        # Format for frontend
+        traffic_series = [{"name": k, "scams": v} for k, v in reversed(list(buckets.items()))]
+        
+        return UnifiedResponse(
+            success=True,
+            data={
+                "active_engagements": active_count,
+                "scams_blocked": total_count,
+                "intel_extracted": intel_count,
+                "system_status": "ONLINE",
+                "threat_level": "MEDIUM",
+                "traffic_series": traffic_series
+            },
+            error=None
+        )

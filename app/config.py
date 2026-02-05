@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     api_key: str = "change-me-in-production"
     secret_key: str = "super-secret-key-change-in-production"
     
+    # Supabase
+    supabase_url: str = ""
+    supabase_key: str = ""
+    
     # Rate Limiting
     rate_limit_per_minute: int = 60
     rate_limit_per_hour: int = 1000
@@ -40,9 +44,23 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     redis_password: str = ""
     
+    # Groq API
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.1-70b-versatile"
+    groq_max_tokens: int = 4096
+    
+    # OpenRouter API
+    openrouter_api_key: str = ""
+    openrouter_model: str = "meta-llama/llama-3.1-8b-instruct:free"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    groq_temperature: float = 0.7
+    
     # Gemini API (Cloud LLM)
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-1.5-pro"
+    gemini_model: str = "gemini-2.0-flash"
+    
+    # Telegram Integration
+    telegram_bot_token: str = ""
     gemini_max_tokens: int = 4096
     gemini_temperature: float = 0.7
     gemini_timeout: int = 30

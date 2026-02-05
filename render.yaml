@@ -24,6 +24,6 @@ databases:
     databaseName: honeypot
     user: honeypot
 
-p_redis:
+redis:
   - name: honeypot-redis
     ipAllowList: [] # only allow internal connections
